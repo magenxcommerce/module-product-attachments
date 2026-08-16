@@ -38,6 +38,14 @@ Files whose extension is not in **Allowed Extensions** are ignored — never
 listed, never mailed — so `.DS_Store` and half-finished uploads in the folder
 cost nothing.
 
+**Folders are created on demand, one per product, and only by an upload.**
+The first upload for a product creates `<media_directory>/<sku>/` (recursively,
+so the media directory itself is created with it); nothing pre-creates a folder
+for every product in the catalogue, and an empty folder is not created just
+because a product page was opened. For the copy-files-in workflow the merchant
+creates the folder — `pub/media/product_attachments/<sku>/` or
+`.../<product id>/` — and the product page lists it on the next load.
+
 ### Product edit page
 
 **Catalog → Products → (a product) → Product Attachments** lists whatever is in

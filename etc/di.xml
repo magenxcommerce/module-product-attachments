@@ -36,6 +36,11 @@
             <argument name="logger" xsi:type="object">MagenxProductAttachmentsLogger</argument>
         </arguments>
     </type>
+    <type name="Magenx\ProductAttachments\Controller\Adminhtml\Attachment\Upload">
+        <arguments>
+            <argument name="logger" xsi:type="object">MagenxProductAttachmentsLogger</argument>
+        </arguments>
+    </type>
     <type name="Magenx\ProductAttachments\Observer\SyncProductAttachments">
         <arguments>
             <argument name="logger" xsi:type="object">MagenxProductAttachmentsLogger</argument>
