@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.2](https://github.com/magenxcommerce/module-product-attachments/compare/v1.0.1...v1.0.2) (2026-08-16)
+
+
+### Bug Fixes
+
+* read the uploaded file out of the mapped request tree ([#5](https://github.com/magenxcommerce/module-product-attachments/issues/5)) ([0282fed](https://github.com/magenxcommerce/module-product-attachments/commit/0282fed9971ee9863d149753eda3114fe421e18a))
+
 ## [1.0.1](https://github.com/magenxcommerce/module-product-attachments/compare/v1.0.0...v1.0.1) (2026-08-16)
 
 
