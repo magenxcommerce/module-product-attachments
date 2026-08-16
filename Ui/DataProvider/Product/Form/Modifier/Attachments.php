@@ -54,7 +54,7 @@ class Attachments extends AbstractModifier
     {
         $product = $this->locator->getProduct();
         $productId = (int) $product->getId();
-        if ($productId <= 0) {
+        if ($productId <= 0 || !$this->config->isEnabled($this->getStoreId())) {
             return $data;
         }
 
@@ -69,6 +69,13 @@ class Attachments extends AbstractModifier
      */
     public function modifyMeta(array $meta): array
     {
+        // The feature flag is a master switch, not an email-only one: with it
+        // off the fieldset is absent from the form altogether, so the admin is
+        // never offered an upload whose files would go nowhere.
+        if (!$this->config->isEnabled($this->getStoreId())) {
+            return $meta;
+        }
+
         $product = $this->locator->getProduct();
         $productId = (int) $product->getId();
 
@@ -128,7 +135,7 @@ class Attachments extends AbstractModifier
                             'uploaderConfig' => [
                                 'url' => $this->urlBuilder->getUrl(
                                     self::UPLOAD_URL,
-                                    ['product_id' => $productId]
+                                    ['product_id' => $productId, 'store' => $this->getStoreId()]
                                 ),
                             ],
                             'notice' => __(
@@ -152,6 +159,14 @@ class Attachments extends AbstractModifier
                 __('Save the product first — its attachment folder is named after the SKU.')
             ),
         ];
+    }
+
+    /**
+     * Store view the form is being edited in, 0 for the default scope.
+     */
+    private function getStoreId(): int
+    {
+        return (int) $this->locator->getStore()->getId();
     }
 
     /**

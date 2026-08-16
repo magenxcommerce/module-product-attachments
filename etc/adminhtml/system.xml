@@ -18,9 +18,9 @@
             <group id="general" translate="label" type="text" sortOrder="10" showInDefault="1" showInWebsite="1" showInStore="1">
                 <label>General</label>
                 <field id="enabled" translate="label comment" type="select" sortOrder="10" showInDefault="1" showInWebsite="1" showInStore="1">
-                    <label>Attach Product Files to Sales Emails</label>
+                    <label>Enabled</label>
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
-                    <comment>Off by default. When off, the product edit page still uploads and lists files — nothing is attached to email.</comment>
+                    <comment>Master switch. Off by default: the Product Attachments fieldset is absent from the product edit page, uploads are refused, and no email carries attachments. Files already in the media folder are left untouched.</comment>
                 </field>
                 <field id="media_directory" translate="label comment" type="text" sortOrder="20" showInDefault="1">
                     <label>Media Directory</label>

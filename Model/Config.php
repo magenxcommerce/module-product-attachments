@@ -53,6 +53,10 @@ class Config
     {
     }
 
+    /**
+     * Master switch: off means no fieldset on the product form, no uploads and
+     * no attachments on email. Files already on disk are left alone.
+     */
     public function isEnabled(?int $storeId = null): bool
     {
         return $this->scopeConfig->isSetFlag(self::XML_ENABLED, ScopeInterface::SCOPE_STORE, $storeId);

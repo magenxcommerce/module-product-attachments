@@ -9,8 +9,9 @@
     <default>
         <magenx_product_attachments>
             <general>
-                <!-- OFF by default: switching this on changes what customers
-                     receive, so it waits for a merchant decision. -->
+                <!-- Master switch, OFF by default: switching it on changes what
+                     customers receive, so it waits for a merchant decision, and
+                     until then the product form shows no fieldset at all. -->
                 <enabled>0</enabled>
                 <media_directory>product_attachments</media_directory>
                 <!-- Only the order confirmation by default. The other sales
