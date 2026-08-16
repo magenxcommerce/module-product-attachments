@@ -41,7 +41,10 @@ cost nothing.
 ### Product edit page
 
 **Catalog → Products → (a product) → Product Attachments** lists whatever is in
-those two folders and uploads into the SKU one.
+those two folders and uploads into the SKU one. The fieldset appears only while
+the feature is enabled for that store view — `enabled` is a master switch, not
+an email-only one, so a merchant is never offered an upload whose files would
+go nowhere.
 
 - An upload is stored **immediately**, in its final location. A file added to a
   form the admin then abandons stays on disk, visible and deletable next time
@@ -88,7 +91,7 @@ for the customer's order confirmation not to be sent.
 
 | Path | Default | Notes |
 |---|---|---|
-| `magenx_product_attachments/general/enabled` | `0` | Off by default. When off, the product page still uploads and lists files — nothing reaches email |
+| `magenx_product_attachments/general/enabled` | `0` | Master switch. Off: no fieldset on the product form, uploads refused, no email attachments. Files already on disk are left alone |
 | `magenx_product_attachments/general/media_directory` | `product_attachments` | Folder under `pub/media`. Global: a per-store value would hide files from the admin looking at another store |
 | `magenx_product_attachments/general/attach_to` | `order` | Any of order / invoice / shipment / credit memo |
 | `magenx_product_attachments/limits/allowed_extensions` | pdf, doc(x), xls(x), csv, txt, rtf, odt, ods, zip, jpg, jpeg, png, gif, webp | Applies to uploads *and* to files dropped in by hand |
@@ -136,8 +139,9 @@ is valid, and the Magento symbols used were read from a 2.4.8 checkout of
 
 ### First-install checklist
 
-- Open a saved product → the **Product Attachments** fieldset lists whatever is
-  in `pub/media/product_attachments/<sku>/`.
+- With the feature off, open a saved product → **no** Product Attachments
+  fieldset. Turn it on → the fieldset lists whatever is in
+  `pub/media/product_attachments/<sku>/`.
 - Upload a PDF → it appears under that folder immediately, before saving.
 - `scp` a second PDF into the folder → it is listed on the next page load.
 - Remove one from the list, save → that file, and only that file, is gone.
