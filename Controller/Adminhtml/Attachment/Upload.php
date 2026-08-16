@@ -83,7 +83,7 @@ class Upload extends Action implements HttpPostActionInterface
                 throw new LocalizedException(__('The file could not be saved.'));
             }
 
-            $name = basename((string) $saved['file']);
+            $name = $this->path->getFileName((string) $saved['file']);
             $file = $this->path->sanitizeSegment($sku) . '/' . $name;
             $mediaPath = $this->path->toMediaPath($file);
 

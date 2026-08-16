@@ -120,6 +120,30 @@ class AttachmentPath
     }
 
     /**
+     * Last segment of a path.
+     *
+     * Hand-rolled rather than basename(): the Magento coding standard
+     * discourages it, and the same split already has to happen for
+     * sanitizeSegment() anyway.
+     */
+    public function getFileName(string $path): string
+    {
+        $segments = preg_split('#[\\\\/]#', trim($path), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+
+        return $segments === [] ? '' : (string) $segments[count($segments) - 1];
+    }
+
+    /**
+     * Lowercased extension of a file name, without the dot.
+     */
+    public function getExtension(string $fileName): string
+    {
+        $position = strrpos($fileName, '.');
+
+        return $position === false ? '' : strtolower(substr($fileName, $position + 1));
+    }
+
+    /**
      * Reduce a value to a safe single path segment.
      *
      * Only the last path segment survives, then everything outside a strict

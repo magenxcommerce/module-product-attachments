@@ -64,8 +64,8 @@ class AttachmentRepository
                         continue;
                     }
 
-                    $name = basename($entry);
-                    if (!$this->config->isExtensionAllowed((string) pathinfo($name, PATHINFO_EXTENSION))) {
+                    $name = $this->path->getFileName($entry);
+                    if (!$this->config->isExtensionAllowed($this->path->getExtension($name))) {
                         continue;
                     }
 
@@ -166,7 +166,7 @@ class AttachmentRepository
                     continue;
                 }
 
-                $target = $to . '/' . basename($entry);
+                $target = $to . '/' . $this->path->getFileName($entry);
                 if ($write->isExist($target)) {
                     $this->logger->warning(
                         '[magenx_product_attachments] left "' . $entry . '" behind: "' . $target . '" already exists'

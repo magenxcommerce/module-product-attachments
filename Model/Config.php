@@ -79,7 +79,7 @@ class Config
     /**
      * Sales email types that carry attachments.
      *
-     * @return string[] subset of Model\Config\Source\EmailType::values()
+     * @return string[] subset of the Model\Config\Source\EmailType constants
      */
     public function getAttachToTypes(?int $storeId = null): array
     {

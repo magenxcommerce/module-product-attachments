@@ -54,7 +54,7 @@ class SalesEmailTypeResolver
     }
 
     /**
-     * @return string|null one of EmailType::values(), or null for every other
+     * @return string|null one of the EmailType constants, or null for every other
      *                     email — comment/update variants included.
      */
     public function resolve(string $templateIdentifier, ?int $storeId = null): ?string

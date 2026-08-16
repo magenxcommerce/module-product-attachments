@@ -25,14 +25,6 @@ class EmailType implements OptionSourceInterface
     public const CREDITMEMO = 'creditmemo';
 
     /**
-     * @return string[]
-     */
-    public static function values(): array
-    {
-        return [self::ORDER, self::INVOICE, self::SHIPMENT, self::CREDITMEMO];
-    }
-
-    /**
      * @inheritDoc
      */
     public function toOptionArray(): array
