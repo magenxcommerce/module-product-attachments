@@ -19,6 +19,7 @@ use Magento\Framework\Controller\Result\Json;
 use Magento\Framework\Controller\Result\JsonFactory;
 use Magento\Framework\Exception\LocalizedException;
 use Magento\MediaStorage\Model\File\UploaderFactory;
+use Psr\Log\LoggerInterface;
 
 /**
  * Receives one file from the product form's uploader.
@@ -48,7 +49,8 @@ class Upload extends Action implements HttpPostActionInterface
         private readonly AttachmentPath $path,
         private readonly Config $config,
         private readonly UploaderFactory $uploaderFactory,
-        private readonly JsonFactory $jsonFactory
+        private readonly JsonFactory $jsonFactory,
+        private readonly LoggerInterface $logger
     ) {
         parent::__construct($context);
     }
@@ -71,9 +73,9 @@ class Upload extends Action implements HttpPostActionInterface
             }
 
             $sku = (string) $this->productRepository->getById($productId)->getSku();
-            $upload = $this->resolveUploadedFile();
+            $fileId = $this->resolveFileId();
 
-            $uploader = $this->uploaderFactory->create(['fileId' => $upload]);
+            $uploader = $this->uploaderFactory->create(['fileId' => $fileId]);
             $uploader->setAllowedExtensions($this->config->getAllowedExtensions());
             $uploader->setAllowRenameFiles(true);
             // No dispersion: a merchant browsing pub/media over SFTP should see
@@ -105,85 +107,115 @@ class Upload extends Action implements HttpPostActionInterface
     }
 
     /**
-     * The one uploaded file, as a flat $_FILES entry.
+     * The `$_FILES` identifier of the uploaded file, checked before it is used.
      *
-     * Handed to the uploader as an ARRAY rather than as a `$_FILES` key,
-     * because the key form cannot express what this component posts. With
-     * `isMultipleFiles` on, the field's input is named `<field>[]`, so PHP
-     * pivots the entry into one list per attribute: `tmp_name` is a list of
-     * paths, not a path. `Magento\Framework\File\Uploader::__construct` then
-     * calls `file_exists()` on it and dies with
-     * "file_exists(): Argument #1 ($filename) must be of type string, array
-     * given". Flattening to the first file is correct rather than lossy: the
-     * component uploads sequentially, one file per request.
+     * The field's input is named after its data scope, so this component posts
+     * under `product[magenx_product_attachments]`, not under a plain key. Two
+     * consequences, and both bit earlier versions of this controller:
      *
-     * @return array{name: string, type: string, tmp_name: string, error: int, size: int}
+     * 1. `$_FILES` holds ONE entry, `product`, whose every attribute is an
+     *    array keyed by the inner name. Magento's request object then
+     *    re-maps that (`Laminas\Http\PhpEnvironment\Request::mapPhpFiles()`)
+     *    into a nested tree — `['product']['magenx_product_attachments']` —
+     *    so the attributes are one level DEEPER than a naive read expects.
+     *    Hence the walk below rather than a lookup.
+     * 2. The bracketed string is exactly what
+     *    `Magento\Framework\File\Uploader::_setUploadFileId()` parses, so the
+     *    identifier is rebuilt from the path found and handed over as a
+     *    STRING. Passing the mapped array instead would work only where PHP's
+     *    `upload_tmp_dir` is one of the handful of directories
+     *    `validateFileId()` allows — a host-dependent trap.
+     *
+     * `param_name` is deliberately not trusted as the key: the component sends
+     * it, but which of its two upload paths ran decides what it holds.
+     *
      * @throws LocalizedException
      */
-    private function resolveUploadedFile(): array
+    private function resolveFileId(): string
     {
         $request = $this->getRequest();
         $files = $request instanceof Http ? $request->getFiles()->toArray() : [];
-        if ($files === []) {
+        $found = $this->findUploadedFile($files);
+
+        if ($found === null) {
+            // Log the shape: without it, "no file" is indistinguishable from
+            // "posted under a name this walk did not recognise".
+            $this->logger->warning(
+                '[magenx_product_attachments] upload carried no recognisable file part; keys: '
+                . ($files === [] ? '(none)' : implode(', ', array_keys($files)))
+            );
+
             throw new LocalizedException(__('No file was uploaded.'));
         }
 
-        // param_name is what the component says it posted under; it does not
-        // always agree with the input's real name, so it is a hint, not a key.
-        $hint = (string) $request->getParam('param_name', '');
-        $key = $hint !== '' && isset($files[$hint]) ? $hint : (string) array_key_first($files);
-        $file = $this->flattenToFirstFile(is_array($files[$key] ?? null) ? $files[$key] : []);
+        ['path' => $path, 'info' => $info] = $found;
+        $name = (string) ($info['name'] ?? '');
+        $error = (int) ($info['error'] ?? UPLOAD_ERR_NO_FILE);
 
-        if ((string) $file['tmp_name'] === '') {
-            throw new LocalizedException(__('No file was uploaded.'));
-        }
-
-        if ($file['error'] !== UPLOAD_ERR_OK) {
-            // Chiefly UPLOAD_ERR_INI_SIZE: PHP discards the body before Magento
-            // sees it, and without this the failure reads as an empty upload.
+        if ($error !== UPLOAD_ERR_OK) {
+            // Chiefly UPLOAD_ERR_INI_SIZE: PHP drops the body before Magento
+            // sees it, leaving tmp_name empty. Reported before the emptiness is
+            // noticed, so the message names the real cause.
             throw new LocalizedException(
-                __('"%1" was not received by the server (upload error %2).', $file['name'], $file['error'])
+                __('"%1" was not received by the server (upload error %2).', $name, $error)
             );
         }
 
         // The component checks the size limit in the browser; this is the half
         // a crafted POST cannot skip.
         $maxSize = $this->config->getMaxFileSize();
-        if ($file['size'] > $maxSize) {
-            throw new LocalizedException(
-                __('"%1" is larger than the %2 byte limit.', $file['name'], $maxSize)
-            );
+        if ((int) ($info['size'] ?? 0) > $maxSize) {
+            throw new LocalizedException(__('"%1" is larger than the %2 byte limit.', $name, $maxSize));
         }
 
-        return $file;
+        return $this->toFileId($path);
     }
 
     /**
-     * Collapse a possibly-pivoted $_FILES entry down to its first file.
+     * Depth-first search for the first file node in the mapped tree.
      *
-     * @param array<string, mixed> $file
-     * @return array{name: string, type: string, tmp_name: string, error: int, size: int}
+     * A node is a file when it carries a scalar `tmp_name` — true even for a
+     * failed upload, where `tmp_name` is an empty string and `error` says why.
+     *
+     * @param array<string|int, mixed> $node
+     * @param string[] $path
+     * @return array{path: string[], info: array<string, mixed>}|null
      */
-    private function flattenToFirstFile(array $file): array
+    private function findUploadedFile(array $node, array $path = []): ?array
     {
-        $flat = [];
-
-        foreach (['name', 'type', 'tmp_name', 'error', 'size'] as $attribute) {
-            $value = $file[$attribute] ?? null;
-            // `<field>[]` gives one level, `<field>[0][file]` gives more.
-            while (is_array($value)) {
-                $value = $value === [] ? null : reset($value);
-            }
-            $flat[$attribute] = $value;
+        if (array_key_exists('tmp_name', $node) && !is_array($node['tmp_name'])) {
+            return ['path' => $path, 'info' => $node];
         }
 
-        return [
-            'name' => (string) $flat['name'],
-            'type' => (string) $flat['type'],
-            'tmp_name' => (string) $flat['tmp_name'],
-            'error' => (int) ($flat['error'] ?? UPLOAD_ERR_NO_FILE),
-            'size' => (int) $flat['size'],
-        ];
+        foreach ($node as $key => $child) {
+            if (!is_array($child)) {
+                continue;
+            }
+
+            $found = $this->findUploadedFile($child, array_merge($path, [(string) $key]));
+            if ($found !== null) {
+                return $found;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Rebuild the posted field name: ['product', 'attachments'] becomes
+     * `product[attachments]`, a single-segment path stays as it is.
+     *
+     * @param string[] $path
+     */
+    private function toFileId(array $path): string
+    {
+        if ($path === []) {
+            throw new LocalizedException(__('No file was uploaded.'));
+        }
+
+        $first = (string) array_shift($path);
+
+        return $path === [] ? $first : $first . '[' . implode('][', $path) . ']';
     }
 
     /**
