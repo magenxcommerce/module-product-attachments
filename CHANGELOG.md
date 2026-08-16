@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.1](https://github.com/magenxcommerce/module-product-attachments/compare/v1.0.0...v1.0.1) (2026-08-16)
+
+
+### Bug Fixes
+
+* uploads with isMultipleFiles, and make `enabled` a master switch ([#3](https://github.com/magenxcommerce/module-product-attachments/issues/3)) ([9025427](https://github.com/magenxcommerce/module-product-attachments/commit/90254277c04835a5196741ab763cb02d8f7f8da5))
+
 ## 1.0.0 (2026-08-16)
 
 
