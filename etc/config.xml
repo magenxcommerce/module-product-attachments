@@ -1,0 +1,29 @@
+<?xml version="1.0"?>
+<!--
+/**
+ * Copyright © MagenX. All rights reserved.
+ * SPDX-License-Identifier: MIT
+ */
+-->
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Store:etc/config.xsd">
+    <default>
+        <magenx_product_attachments>
+            <general>
+                <!-- OFF by default: switching this on changes what customers
+                     receive, so it waits for a merchant decision. -->
+                <enabled>0</enabled>
+                <media_directory>product_attachments</media_directory>
+                <!-- Only the order confirmation by default. The other sales
+                     emails are opt-in so the same PDF is not re-sent with every
+                     invoice and shipment. -->
+                <attach_to>order</attach_to>
+            </general>
+            <limits>
+                <allowed_extensions>pdf,doc,docx,xls,xlsx,csv,txt,rtf,odt,ods,zip,jpg,jpeg,png,gif,webp</allowed_extensions>
+                <max_file_size>10485760</max_file_size>
+                <max_total_size>20971520</max_total_size>
+                <max_count>10</max_count>
+            </limits>
+        </magenx_product_attachments>
+    </default>
+</config>

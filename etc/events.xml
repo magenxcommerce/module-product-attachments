@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<!--
+/**
+ * Copyright © MagenX. All rights reserved.
+ * SPDX-License-Identifier: MIT
+ */
+-->
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:framework:Event/etc/events.xsd">
+    <!--
+        catalog_product_save_after, not _before: the observer renames the SKU
+        folder when the SKU changes, and only after the save is the new SKU
+        the one the product actually has.
+    -->
+    <event name="catalog_product_save_after">
+        <observer name="magenx_product_attachments_sync" instance="Magenx\ProductAttachments\Observer\SyncProductAttachments"/>
+    </event>
+</config>

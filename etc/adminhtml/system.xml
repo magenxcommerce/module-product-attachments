@@ -1,0 +1,62 @@
+<?xml version="1.0"?>
+<!--
+/**
+ * Copyright © MagenX. All rights reserved.
+ * SPDX-License-Identifier: MIT
+ */
+-->
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Config:etc/system_file.xsd">
+    <system>
+        <tab id="magenx" translate="label" sortOrder="400">
+            <label>Magenx</label>
+        </tab>
+        <section id="magenx_product_attachments" translate="label" type="text" sortOrder="420" showInDefault="1" showInWebsite="1" showInStore="1">
+            <class>separator-top</class>
+            <label>Product Attachments</label>
+            <tab>magenx</tab>
+            <resource>Magenx_ProductAttachments::config</resource>
+            <group id="general" translate="label" type="text" sortOrder="10" showInDefault="1" showInWebsite="1" showInStore="1">
+                <label>General</label>
+                <field id="enabled" translate="label comment" type="select" sortOrder="10" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Attach Product Files to Sales Emails</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment>Off by default. When off, the product edit page still uploads and lists files — nothing is attached to email.</comment>
+                </field>
+                <field id="media_directory" translate="label comment" type="text" sortOrder="20" showInDefault="1">
+                    <label>Media Directory</label>
+                    <comment><![CDATA[Folder under <b>pub/media</b> holding one sub-folder per product, named after the product SKU (or its numeric id). Files dropped there by hand are picked up exactly like uploaded ones. One path segment: letters, digits, dot, dash, underscore.]]></comment>
+                </field>
+                <field id="attach_to" translate="label comment" type="multiselect" sortOrder="30" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Attach To</label>
+                    <source_model>Magenx\ProductAttachments\Model\Config\Source\EmailType</source_model>
+                    <comment>Which sales email carries the files. Order comment/update emails are never attached to, only the emails selected here.</comment>
+                    <depends><field id="enabled">1</field></depends>
+                </field>
+            </group>
+            <group id="limits" translate="label" type="text" sortOrder="20" showInDefault="1" showInWebsite="1" showInStore="1">
+                <label>Limits</label>
+                <field id="allowed_extensions" translate="label comment" type="text" sortOrder="10" showInDefault="1">
+                    <label>Allowed Extensions</label>
+                    <comment>Comma-separated, no dots. Applies to uploads AND to files dropped in by hand — anything else in the folder is ignored, never mailed. Executable types (php, phtml, sh, exe, …) are always refused whatever is listed here.</comment>
+                </field>
+                <field id="max_file_size" translate="label comment" type="text" sortOrder="20" showInDefault="1">
+                    <label>Maximum File Size (bytes)</label>
+                    <validate>validate-digits validate-greater-than-zero</validate>
+                    <comment>Per file, on upload and on attach. Default 10485760 (10 MB). A larger file already in the folder is skipped and logged.</comment>
+                </field>
+                <field id="max_total_size" translate="label comment" type="text" sortOrder="30" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Maximum Total Size Per Email (bytes)</label>
+                    <validate>validate-digits validate-greater-than-zero</validate>
+                    <comment>Default 20971520 (20 MB). Most mail servers reject more; files past the budget are skipped and logged rather than the email failing.</comment>
+                    <depends><field id="magenx_product_attachments/general/enabled">1</field></depends>
+                </field>
+                <field id="max_count" translate="label comment" type="text" sortOrder="40" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Maximum Files Per Email</label>
+                    <validate>validate-digits validate-greater-than-zero</validate>
+                    <comment>Default 10. An order of many products can otherwise mail dozens of files.</comment>
+                    <depends><field id="magenx_product_attachments/general/enabled">1</field></depends>
+                </field>
+            </group>
+        </section>
+    </system>
+</config>

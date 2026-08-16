@@ -1,0 +1,36 @@
+<?xml version="1.0"?>
+<!--
+/**
+ * Copyright © MagenX. All rights reserved.
+ * SPDX-License-Identifier: MIT
+ *
+ * NOTE: an existing core resource must be re-declared at the EXACT path core
+ * declares it at. acl.xml files are merged structurally (by path + id), not by
+ * id alone, so the same id nested under two different parents survives the
+ * merge and then makes Magento\Framework\Acl\Builder::getAcl() throw
+ * "LogicException: Could not create an acl object: Resource id '<id>' already
+ * exists in the ACL" — which 500s EVERY admin page, not just this module's.
+ * Magento_Config::config lives at admin > stores > stores_settings (see
+ * Magento/Config/etc/acl.xml at 2.4.8); reproducing that chain is what makes
+ * this file merge instead of collide.
+ *
+ * There is no upload/delete resource of our own: both actions live on the
+ * product edit page and are gated on Magento_Catalog::products, the permission
+ * that already decides who may edit a product at all.
+ */
+-->
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:framework:Acl/etc/acl.xsd">
+    <acl>
+        <resources>
+            <resource id="Magento_Backend::admin">
+                <resource id="Magento_Backend::stores">
+                    <resource id="Magento_Backend::stores_settings">
+                        <resource id="Magento_Config::config">
+                            <resource id="Magenx_ProductAttachments::config" title="Product Attachments Settings" sortOrder="185"/>
+                        </resource>
+                    </resource>
+                </resource>
+            </resource>
+        </resources>
+    </acl>
+</config>

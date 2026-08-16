@@ -1,0 +1,64 @@
+<?xml version="1.0"?>
+<!--
+/**
+ * Copyright © MagenX. All rights reserved.
+ * SPDX-License-Identifier: MIT
+ */
+-->
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:framework:ObjectManager/etc/config.xsd">
+
+    <!-- Dedicated log file: a skipped attachment is a merchant problem, and it
+         should not have to be found among everything else in system.log. -->
+    <virtualType name="MagenxProductAttachmentsLogHandler" type="Magento\Framework\Logger\Handler\Base">
+        <arguments>
+            <argument name="fileName" xsi:type="string">/var/log/magenx_product_attachments.log</argument>
+        </arguments>
+    </virtualType>
+    <virtualType name="MagenxProductAttachmentsLogger" type="Magento\Framework\Logger\Monolog">
+        <arguments>
+            <argument name="handlers" xsi:type="array">
+                <item name="debug" xsi:type="object">MagenxProductAttachmentsLogHandler</item>
+            </argument>
+        </arguments>
+    </virtualType>
+    <type name="Magenx\ProductAttachments\Model\AttachmentRepository">
+        <arguments>
+            <argument name="logger" xsi:type="object">MagenxProductAttachmentsLogger</argument>
+        </arguments>
+    </type>
+    <type name="Magenx\ProductAttachments\Model\Mail\OrderAttachmentProvider">
+        <arguments>
+            <argument name="logger" xsi:type="object">MagenxProductAttachmentsLogger</argument>
+        </arguments>
+    </type>
+    <type name="Magenx\ProductAttachments\Model\Mail\AttachmentTransportBuilder">
+        <arguments>
+            <argument name="logger" xsi:type="object">MagenxProductAttachmentsLogger</argument>
+        </arguments>
+    </type>
+    <type name="Magenx\ProductAttachments\Observer\SyncProductAttachments">
+        <arguments>
+            <argument name="logger" xsi:type="object">MagenxProductAttachmentsLogger</argument>
+        </arguments>
+    </type>
+
+    <!--
+        The ONLY place the attachment-aware transport builder is wired in.
+
+        Magento\Sales\Model\Order\Email\SenderBuilder is what every sales email
+        (order, invoice, shipment, credit memo, and their comment variants) goes
+        through, and it takes the transport builder as a constructor argument —
+        so swapping it here reaches exactly the sales emails and nothing else.
+        Newsletter, customer account and third-party mail keep the stock
+        builder.
+
+        The subclass still no-ops unless the feature is enabled AND the template
+        being sent is one of the configured sales email templates, so a sales
+        email with no matching product files is byte-identical to before.
+    -->
+    <type name="Magento\Sales\Model\Order\Email\SenderBuilder">
+        <arguments>
+            <argument name="transportBuilder" xsi:type="object">Magenx\ProductAttachments\Model\Mail\AttachmentTransportBuilder</argument>
+        </arguments>
+    </type>
+</config>
