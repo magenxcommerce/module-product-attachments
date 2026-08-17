@@ -1,6 +1,7 @@
 {
     "name": "magenxcommerce/module-product-attachments",
     "description": "Per-product file attachments for Magento 2 — uploaded on the product edit page or dropped into pub/media/product_attachments/<sku>/, and attached to the sales emails sent to the customer. Admin-only, no storefront surface.",
+    "version": "1.0.2",
     "type": "magento2-module",
     "license": "MIT",
     "require": {
