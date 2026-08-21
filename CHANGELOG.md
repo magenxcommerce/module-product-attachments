@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.3](https://github.com/magenxcommerce/module-product-attachments/compare/v1.0.2...v1.0.3) (2026-08-21)
+
+
+### Bug Fixes
+
+* Add metadata table and storefront GraphQL for product attachments ([#8](https://github.com/magenxcommerce/module-product-attachments/issues/8)) ([aa48397](https://github.com/magenxcommerce/module-product-attachments/commit/aa4839729d01cc09c3f1def7f07de767250e528c))
+
 ## [1.0.2](https://github.com/magenxcommerce/module-product-attachments/compare/v1.0.1...v1.0.2) (2026-08-16)
 
 
