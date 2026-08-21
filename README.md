@@ -71,23 +71,18 @@ When on, `ProductInterface.magenx_attachments` (GraphQL) lists a product's
 rows — `id`, `title`, `type`, `file_extension`, `mime_type`, `size` — and
 **nothing else**. There is no `url`/`file`/`external_url` field on that type;
 the real location, upload or external, is resolved only by
-`magenxProductAttachmentDownload(secret, id)`, a query gated by a shared
-secret and intended to be called **only server-to-server** by the storefront
-(never from a browser, never added to a persisted-query allowlist — same
-trust model the companion `Magenx_SocialLoginGraphQl` module uses for
-`socialLogin`).
-
-That secret is deliberately an **environment variable**,
-`MAGENX_PRODUCT_ATTACHMENTS_DOWNLOAD_SECRET`, not a system.xml field: a value
-in `core_config_data` round-trips through `app:config:dump` / `config:sync`
-into version control, an env var never does. Set it to the same value on both
-the Magento host and the Next.js storefront. Leave it unset and the download
-query refuses every request — fails **closed**, not open.
+`magenxProductAttachmentDownload(id)`, a query intended to be called **only
+server-to-server** by the storefront (never from a browser, never added to a
+persisted-query allowlist). There is no shared secret gating it — Magento's
+GraphQL endpoint is only reachable from the storefront's private network to
+begin with, and every attachment it resolves is already meant to be a public
+download once resolved, so a secret would guard nothing the allowlist
+omission doesn't already.
 
 The storefront theme's `/api/download/[id]` route is the only intended
-caller: it resolves the id via that secret-gated query, then fetches and
-streams the bytes itself, so the browser's network tab shows only
-`/api/download/<id>`, never a `pub/media` path or an external host.
+caller: it resolves the id via that query, then fetches and streams the
+bytes itself, so the browser's network tab shows only `/api/download/<id>`,
+never a `pub/media` path or an external host.
 
 ### Email
 
@@ -121,14 +116,11 @@ order confirmation not to be sent.
 | `magenx_product_attachments/general/enabled` | `0` | Master switch. Off: no fieldset on the product form, uploads refused, no email attachments. Files and rows already saved are left alone |
 | `magenx_product_attachments/general/media_directory` | `product_attachments` | Folder under `pub/media`. Global: a per-store value would hide files from the admin looking at another store |
 | `magenx_product_attachments/general/attach_to` | `order` | Any of order / invoice / shipment / credit memo |
-| `magenx_product_attachments/general/show_on_storefront` | `0` | Independent of `enabled`. Lists this product's attachments as chips on its storefront page. Also requires `MAGENX_PRODUCT_ATTACHMENTS_DOWNLOAD_SECRET` (below) to be set |
+| `magenx_product_attachments/general/show_on_storefront` | `0` | Independent of `enabled`. Lists this product's attachments as chips on its storefront page |
 | `magenx_product_attachments/limits/allowed_extensions` | pdf, doc(x), xls(x), csv, txt, rtf, odt, ods, zip, jpg, jpeg, png, gif, webp | Applies to uploads only — an external link isn't checked against it, it is validated as an `http(s)` URL instead |
 | `magenx_product_attachments/limits/max_file_size` | `10485760` (10 MB) | Per file, enforced on upload and on attach |
 | `magenx_product_attachments/limits/max_total_size` | `20971520` (20 MB) | Per email. Files past the budget are skipped, the email still goes |
 | `magenx_product_attachments/limits/max_count` | `10` | Per email |
-
-**Not** in system.xml: `MAGENX_PRODUCT_ATTACHMENTS_DOWNLOAD_SECRET` is an
-environment variable — see *Storefront* above for why.
 
 ## Security
 
@@ -148,11 +140,10 @@ environment variable — see *Storefront* above for why.
   the size limit the browser already checked.
 - MIME types are read from file content, never from the name the uploader
   sent.
-- `magenxProductAttachmentDownload` fails **closed**: an unset or mismatched
-  secret throws an authorization error rather than resolving anything.
-  `magenx_attachments` never returns a fetchable location at all — only the
-  secret-gated query does, and only the storefront's server (never the
-  browser) is meant to hold that secret.
+- `magenx_attachments` never returns a fetchable location at all — only
+  `magenxProductAttachmentDownload` does, and it is kept off the storefront's
+  persisted-query allowlist so only server-to-server calls (from a private
+  network) can reach it, never a browser.
 - The storefront's fetch of an `external` row's URL (inside `/api/download/[id]`)
   is the one place this module hands a merchant-entered URL to an HTTP
   client. That fetch is the storefront's responsibility to guard against
@@ -168,18 +159,13 @@ bin/magento setup:upgrade
 bin/magento cache:flush
 ```
 
-Set `MAGENX_PRODUCT_ATTACHMENTS_DOWNLOAD_SECRET` in the Magento environment
-(and the matching value on the storefront) before turning on **Show On
-Product Page** — without it the download query always refuses.
-
 ## Verification status
 
 Static checks only: every PHP file lints, every XML file parses, `composer.json`
 is valid, and the Magento symbols used were read from a 2.4.8 checkout of
 `magento/magento2` plus this stack's own companion GraphQL modules
-(`StripeIntegration_PaymentsGraphQl`, `Magenx_SocialLoginGraphQl`) for the
-`dynamicRows`, `BatchResolverInterface`/`ResolverInterface` and secret-gated
-query conventions followed here.
+(`StripeIntegration_PaymentsGraphQl`) for the `dynamicRows` and
+`BatchResolverInterface`/`ResolverInterface` conventions followed here.
 
 **Nothing has been exercised against a live Magento** — the sandbox has none.
 
@@ -198,10 +184,9 @@ query conventions followed here.
 - Turn on `enabled`, place an order for a product with `upload` rows → the
   confirmation email arrives **with both files and its HTML body intact**.
   `external` rows never appear on the email.
-- Set `MAGENX_PRODUCT_ATTACHMENTS_DOWNLOAD_SECRET` and turn on **Show On
-  Product Page** → query `magenx_attachments` on that product: only
-  metadata comes back, never a URL. Call `magenxProductAttachmentDownload`
-  with the matching secret and a real id → a `file_url` comes back; with the
-  wrong secret → an authorization error.
+- Turn on **Show On Product Page** → query `magenx_attachments` on that
+  product: only metadata comes back, never a URL. Call
+  `magenxProductAttachmentDownload(id: ...)` with a real id → a `file_url`
+  comes back.
 - Turn **Show On Product Page** back off → `magenx_attachments` returns null
   and `magenxProductAttachmentDownload` returns null for that product's ids.

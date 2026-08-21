@@ -29,7 +29,8 @@ use Magento\Framework\GraphQl\Schema\Type\ResolveInfo;
  * Returns metadata only — id, title, type, extension, mime type, size.
  * There is deliberately NO url/path/file field: the real location is never
  * handed to the browser, only to Resolver\ProductAttachmentDownload, which
- * is itself gated by a shared secret and reachable only server-to-server.
+ * is itself reachable only server-to-server (kept off the persisted-query
+ * allowlist, never called from a browser).
  */
 class ProductAttachments implements ResolverInterface
 {

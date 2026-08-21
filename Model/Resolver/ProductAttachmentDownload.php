@@ -12,20 +12,21 @@ use Magenx\ProductAttachments\Model\AttachmentRepository;
 use Magenx\ProductAttachments\Model\AttachmentType;
 use Magenx\ProductAttachments\Model\Config;
 use Magento\Framework\GraphQl\Config\Element\Field;
-use Magento\Framework\GraphQl\Exception\GraphQlAuthorizationException;
 use Magento\Framework\GraphQl\Query\ResolverInterface;
 use Magento\Framework\GraphQl\Schema\Type\ResolveInfo;
 
 /**
- * Resolves Query.magenxProductAttachmentDownload(secret, id).
+ * Resolves Query.magenxProductAttachmentDownload(id).
  *
- * SERVER-ONLY, same trust model as Magenx_SocialLoginGraphQl's
- * `socialLogin`: the shared secret (an environment variable, see
- * Model\Config::getDownloadSecret — deliberately not a system.xml field) IS
- * the authorization boundary. This must NEVER be added to a storefront
- * persisted-query allowlist or called from a browser — it is the one place
- * that resolves an attachment id back to a real, fetchable location, and
- * only the Next.js download route is meant to see that.
+ * SERVER-ONLY by convention, not by secret: this must NEVER be added to a
+ * storefront persisted-query allowlist or called from a browser, because it
+ * is the one place that resolves an attachment id back to a real, fetchable
+ * location, and the Next.js /api/download/[id] route exists specifically so
+ * the browser never has to see that. There is no shared-secret gate here —
+ * Magento's GraphQL endpoint is only reachable from the storefront's private
+ * network, and every attachment this resolves is already meant to be a
+ * public download once resolved, so a secret would guard nothing that
+ * network placement + the allowlist omission don't already.
  *
  * A plain resolver: this is a single root-query lookup by id, not a field
  * riding a list of sibling objects, so BatchResolverInterface buys nothing
@@ -50,14 +51,6 @@ class ProductAttachmentDownload implements ResolverInterface
         ?array $value = null,
         ?array $args = null
     ) {
-        $secret = $this->config->getDownloadSecret();
-        $provided = (string) ($args['secret'] ?? '');
-        // Fail CLOSED: an unset secret must refuse every request, never be
-        // treated as "no authorization required".
-        if ($secret === '' || !hash_equals($secret, $provided)) {
-            throw new GraphQlAuthorizationException(__('Not authorized.'));
-        }
-
         $attachmentId = (int) ($args['id'] ?? 0);
         if ($attachmentId <= 0) {
             return null;

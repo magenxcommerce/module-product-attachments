@@ -1,6 +1,6 @@
 {
     "name": "magenxcommerce/module-product-attachments",
-    "description": "Per-product file attachments for Magento 2 — uploaded files or external links, titled and ordered on the product edit page, attached to the sales emails sent to the customer, and optionally listed on the storefront product page as downloadable chips whose real location is hidden behind a secret-gated GraphQL query.",
+    "description": "Per-product file attachments for Magento 2 — uploaded files or external links, titled and ordered on the product edit page, attached to the sales emails sent to the customer, and optionally listed on the storefront product page as downloadable chips whose real location is resolved by a server-only GraphQL query, never sent to the browser.",
     "type": "magento2-module",
     "license": "MIT",
     "require": {
