@@ -95,6 +95,9 @@ class ProductAttachments implements ResolverInterface
         }
 
         if (!empty($row['external_url'])) {
+            // Reading the path segment off a merchant-entered external URL,
+            // not a Magento URL.
+            // phpcs:ignore Magento2.Functions.DiscouragedFunction
             $path = (string) (parse_url((string) $row['external_url'], PHP_URL_PATH) ?: '');
             $extension = $this->path->getExtension($this->path->getFileName($path));
 

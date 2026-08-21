@@ -16,7 +16,7 @@ namespace Magenx\ProductAttachments\Model;
  * admin grid, GraphQL and the download resolver — only which of `file` /
  * `external_url` is populated differs.
  */
-final class AttachmentType
+class AttachmentType
 {
     public const UPLOAD = 'upload';
     public const EXTERNAL = 'external';
@@ -25,6 +25,9 @@ final class AttachmentType
     {
     }
 
+    // A stateless guard on this class's own constants; there is no instance
+    // to intercept a plugin onto.
+    // phpcs:ignore Magento2.Functions.StaticFunction
     public static function isValid(string $type): bool
     {
         return $type === self::UPLOAD || $type === self::EXTERNAL;

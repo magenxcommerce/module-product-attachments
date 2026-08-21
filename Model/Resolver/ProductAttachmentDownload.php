@@ -104,6 +104,9 @@ class ProductAttachmentDownload implements ResolverInterface
     private function externalPayload(array $row): ?array
     {
         $url = (string) ($row['external_url'] ?? '');
+        // Re-validating the stored external URL's shape before it is
+        // resolved, not a Magento URL.
+        // phpcs:ignore Magento2.Functions.DiscouragedFunction
         $parts = parse_url($url);
         if (!is_array($parts) || !isset($parts['scheme'], $parts['host'])
             || !in_array(strtolower($parts['scheme']), ['http', 'https'], true) || $parts['host'] === ''

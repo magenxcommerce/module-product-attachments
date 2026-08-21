@@ -277,6 +277,9 @@ class SyncProductAttachments implements ObserverInterface
             'type' => AttachmentType::EXTERNAL,
             'file' => null,
             'external_url' => $url,
+            // Parsing a merchant-entered external URL, not a Magento URL —
+            // Magento's own UrlInterface has no bearing on a third-party host.
+            // phpcs:ignore Magento2.Functions.DiscouragedFunction
             'title' => $title !== '' ? $title : (string) (parse_url($url, PHP_URL_HOST) ?: __('External Link')),
             'mime_type' => null,
             'size' => null,
@@ -297,6 +300,9 @@ class SyncProductAttachments implements ObserverInterface
             return null;
         }
 
+        // Validating a merchant-entered external URL's shape, not building a
+        // Magento URL.
+        // phpcs:ignore Magento2.Functions.DiscouragedFunction
         $parts = parse_url($url);
         if (!is_array($parts) || !isset($parts['scheme'], $parts['host'])) {
             return null;
