@@ -21,3 +21,61 @@ jobs:
     # required status checks in a way that a trigger-level filter would not.
     if: ${{ !startsWith(github.head_ref, 'release-please--') }}
     uses: magenxcommerce/workflows/.github/workflows/php-module-ci.yml@main
+
+  graphql-syntax:
+    # Same skip as the ci job above, same reason.
+    if: ${{ !startsWith(github.head_ref, 'release-please--') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+          tools: composer:v2
+
+      # Runs every *.graphqls file through the exact parser Magento uses at
+      # runtime (webonyx/graphql-php). This exists because phpcs's own
+      # Magento2.GraphQL sniffs tokenize these files too but don't catch
+      # every genuine parse failure — a schema that phpcs accepted still blew
+      # up production with "Syntax Error: Unterminated string" once merged
+      # into the full stitched schema. A dedicated parse pass, in its own
+      # temp composer project so it never touches this module's own
+      # composer.lock, is the most direct check there is: if this fails, the
+      # runtime parser will fail on the same file too.
+      - name: Parse every schema.graphqls file
+        run: |
+          shopt -s globstar nullglob
+          files=(**/schema.graphqls)
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "No schema.graphqls files found — nothing to check."
+            exit 0
+          fi
+
+          mkdir -p "$RUNNER_TEMP/graphql-parse"
+          cd "$RUNNER_TEMP/graphql-parse"
+          composer init --no-interaction --name=magenxcommerce/ci-tools -q
+          composer require --no-interaction --no-progress webonyx/graphql-php -q
+
+          cat > check.php <<'PHP'
+          <?php
+          require __DIR__ . '/vendor/autoload.php';
+
+          use GraphQL\Language\Parser;
+
+          $failed = false;
+          foreach (array_slice($argv, 1) as $file) {
+              try {
+                  Parser::parse(file_get_contents($file));
+                  fwrite(STDOUT, "OK   $file\n");
+              } catch (\Throwable $e) {
+                  fwrite(STDERR, "FAIL $file: " . $e->getMessage() . "\n");
+                  $failed = true;
+              }
+          }
+
+          exit($failed ? 1 : 0);
+          PHP
+
+          php check.php "${files[@]/#/$GITHUB_WORKSPACE/}"
