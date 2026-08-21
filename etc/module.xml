@@ -16,6 +16,7 @@
             <module name="Magento_Catalog"/>
             <module name="Magento_Sales"/>
             <module name="Magento_Email"/>
+            <module name="Magento_CatalogGraphQl"/>
         </sequence>
     </module>
 </config>

@@ -22,6 +22,17 @@ class Config
     public const XML_ENABLED = 'magenx_product_attachments/general/enabled';
     public const XML_MEDIA_DIRECTORY = 'magenx_product_attachments/general/media_directory';
     public const XML_ATTACH_TO = 'magenx_product_attachments/general/attach_to';
+    public const XML_SHOW_ON_STOREFRONT = 'magenx_product_attachments/general/show_on_storefront';
+
+    /**
+     * Deliberately an ENVIRONMENT VARIABLE, not a system.xml field: this is
+     * the authorization boundary on a server-only GraphQL query (see
+     * Resolver\ProductAttachmentDownload), the same trust model
+     * Magenx_SocialLoginGraphQl uses for `socialLogin`. A secret that lived
+     * in `core_config_data` would round-trip through `app:config:dump` /
+     * `config:sync` into version control — an env var never does.
+     */
+    private const ENV_DOWNLOAD_SECRET = 'MAGENX_PRODUCT_ATTACHMENTS_DOWNLOAD_SECRET';
     public const XML_ALLOWED_EXTENSIONS = 'magenx_product_attachments/limits/allowed_extensions';
     public const XML_MAX_FILE_SIZE = 'magenx_product_attachments/limits/max_file_size';
     public const XML_MAX_TOTAL_SIZE = 'magenx_product_attachments/limits/max_total_size';
@@ -116,6 +127,28 @@ class Config
     public function isExtensionAllowed(string $extension): bool
     {
         return in_array(strtolower(ltrim($extension, '.')), $this->getAllowedExtensions(), true);
+    }
+
+    /**
+     * Independent of `enabled`: a merchant can keep mailing attachments
+     * without publishing them on the PDP, or the reverse. Gates both the
+     * `magenx_attachments` GraphQL field and the download resolver.
+     */
+    public function isShowOnStorefront(?int $storeId = null): bool
+    {
+        return $this->scopeConfig->isSetFlag(self::XML_SHOW_ON_STOREFRONT, ScopeInterface::SCOPE_STORE, $storeId);
+    }
+
+    /**
+     * Shared secret the Next.js storefront's server-only download route
+     * authenticates with. Empty when unset — callers must fail CLOSED on
+     * that, never treat a blank secret as "authorization not required".
+     */
+    public function getDownloadSecret(): string
+    {
+        $secret = getenv(self::ENV_DOWNLOAD_SECRET);
+
+        return $secret === false ? '' : $secret;
     }
 
     /**

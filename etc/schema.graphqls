@@ -1,0 +1,36 @@
+# Copyright © MagenX. All rights reserved.
+#
+# Only reachable when Stores > Configuration > Magenx > Product Attachments >
+# Show On Product Page is enabled — see Model\Config::isShowOnStorefront().
+# magenx_attachments deliberately carries no url/path field: the real
+# location of an attachment is resolved only by magenxProductAttachmentDownload,
+# a SERVER-ONLY query gated by a shared secret (see that field's @doc and
+# Model\Resolver\ProductAttachmentDownload). Never allowlist that query for
+# the browser.
+
+interface ProductInterface {
+    magenx_attachments: [ProductAttachment] @resolver(class: "Magenx\\ProductAttachments\\Model\\Resolver\\ProductAttachments") @doc(description: "This product's downloadable attachments (uploaded files and external links), ordered for display. Null when the feature or its storefront toggle is off, or the product has none.")
+}
+
+type ProductAttachment @doc(description: "One product attachment's metadata — never its real file path or external URL. Download it via magenxProductAttachmentDownload(id: ...).") {
+    id: Int! @doc(description: "Opaque attachment id. Pass to /api/download/{id} on the storefront (or, server-to-server, to magenxProductAttachmentDownload) to fetch the file.")
+    title: String! @doc(description: "Display label.")
+    type: String! @doc(description: "upload or external.")
+    file_extension: String @doc(description: "Lowercased file extension without the dot, when known — e.g. pdf.")
+    mime_type: String @doc(description: "MIME type, when known.")
+    size: Int @doc(description: "Size in bytes, when known. Null for an external link until it has been downloaded once.")
+}
+
+type Query {
+    magenxProductAttachmentDownload(
+        secret: String! @doc(description: "Shared secret matching the MAGENX_PRODUCT_ATTACHMENTS_DOWNLOAD_SECRET environment variable on the Magento side. Wrong or missing secret throws an authorization error.")
+        id: Int! @doc(description: "The attachment id from ProductAttachment.id.")
+    ): ProductAttachmentDownload @resolver(class: "Magenx\\ProductAttachments\\Model\\Resolver\\ProductAttachmentDownload") @doc(description: "SERVER-ONLY: resolves an attachment id to its actual, fetchable location. Gated by a shared secret — intended to be called only server-to-server by the storefront's /api/download/[id] route, never from a browser. Do NOT add to a persisted-query allowlist.")
+}
+
+type ProductAttachmentDownload @doc(description: "Result of magenxProductAttachmentDownload — the real, otherwise-hidden location of one attachment.") {
+    type: String! @doc(description: "upload or external.")
+    file_url: String! @doc(description: "The actual URL to fetch the bytes from — a pub/media URL for an upload, the merchant-entered URL for an external link. Never expose this to a browser.")
+    filename: String! @doc(description: "Suggested filename, with extension, for the Content-Disposition header.")
+    mime_type: String @doc(description: "MIME type, when known. Falls back to application/octet-stream if null.")
+}
