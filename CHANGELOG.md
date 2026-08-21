@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.4](https://github.com/magenxcommerce/module-product-attachments/compare/v1.0.3...v1.0.4) (2026-08-21)
+
+
+### Bug Fixes
+
+* remove literal curly braces from a GraphQL description string ([#10](https://github.com/magenxcommerce/module-product-attachments/issues/10)) ([c7dfe1f](https://github.com/magenxcommerce/module-product-attachments/commit/c7dfe1f07205ec361a14798dd68eb69b15582abd))
+
 ## [1.0.3](https://github.com/magenxcommerce/module-product-attachments/compare/v1.0.2...v1.0.3) (2026-08-21)
 
 
