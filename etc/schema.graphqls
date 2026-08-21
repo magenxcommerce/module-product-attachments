@@ -15,7 +15,7 @@ interface ProductInterface {
 }
 
 type ProductAttachment @doc(description: "One product attachment's metadata — never its real file path or external URL. Download it via magenxProductAttachmentDownload(id: ...).") {
-    id: Int! @doc(description: "Opaque attachment id. Pass to /api/download/{id} on the storefront (or, server-to-server, to magenxProductAttachmentDownload) to fetch the file.")
+    id: Int! @doc(description: "Opaque attachment id. Pass it to /api/download/[id] on the storefront (or, server-to-server, to magenxProductAttachmentDownload) to fetch the file.")
     title: String! @doc(description: "Display label.")
     type: String! @doc(description: "upload or external.")
     file_extension: String @doc(description: "Lowercased file extension without the dot, when known — e.g. pdf.")
