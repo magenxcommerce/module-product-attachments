@@ -18,6 +18,10 @@
                      emails are opt-in so the same PDF is not re-sent with every
                      invoice and shipment. -->
                 <attach_to>order</attach_to>
+                <!-- Off by default, independent of `enabled`: publishing files
+                     on the product page is a separate merchant decision from
+                     mailing them. -->
+                <show_on_storefront>0</show_on_storefront>
             </general>
             <limits>
                 <allowed_extensions>pdf,doc,docx,xls,xlsx,csv,txt,rtf,odt,ods,zip,jpg,jpeg,png,gif,webp</allowed_extensions>

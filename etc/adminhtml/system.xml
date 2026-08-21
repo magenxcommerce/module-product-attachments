@@ -32,6 +32,11 @@
                     <comment>Which sales email carries the files. Order comment/update emails are never attached to, only the emails selected here.</comment>
                     <depends><field id="enabled">1</field></depends>
                 </field>
+                <field id="show_on_storefront" translate="label comment" type="select" sortOrder="40" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Show On Product Page</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment>Independent of Enabled above: lists this product's attachments (uploaded files and external links) as downloadable chips on its storefront page, between Product Features and Product Description. Off by default — a merchant can mail attachments without publishing them, or the reverse.</comment>
+                </field>
             </group>
             <group id="limits" translate="label" type="text" sortOrder="20" showInDefault="1" showInWebsite="1" showInStore="1">
                 <label>Limits</label>

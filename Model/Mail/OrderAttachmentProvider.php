@@ -8,6 +8,7 @@ declare(strict_types=1);
 namespace Magenx\ProductAttachments\Model\Mail;
 
 use Magenx\ProductAttachments\Model\AttachmentRepository;
+use Magenx\ProductAttachments\Model\AttachmentType;
 use Magenx\ProductAttachments\Model\Config;
 use Magento\Sales\Api\Data\OrderInterface;
 use Magento\Sales\Api\Data\OrderItemInterface;
@@ -62,54 +63,56 @@ class OrderAttachmentProvider
                 break;
             }
 
-            if ($file['size'] > $maxFileSize) {
+            $size = (int) ($file['size'] ?? 0);
+            $name = (string) ($file['title'] ?? $file['file']);
+
+            if ($size > $maxFileSize) {
                 $this->logger->warning(sprintf(
                     '[magenx_product_attachments] order %s: skipped "%s" (%d bytes, per-file limit %d)',
                     (string) $order->getIncrementId(),
-                    $file['file'],
-                    $file['size'],
+                    $name,
+                    $size,
                     $maxFileSize
                 ));
                 continue;
             }
 
-            if ($file['size'] > $remaining) {
+            if ($size > $remaining) {
                 // Skip, do not stop: a small manual after a large video is still
                 // worth sending.
                 $this->logger->warning(sprintf(
                     '[magenx_product_attachments] order %s: skipped "%s", %d bytes left in the per-email budget',
                     (string) $order->getIncrementId(),
-                    $file['file'],
+                    $name,
                     $remaining
                 ));
                 continue;
             }
 
-            $content = $this->attachmentRepository->read($file['file']);
+            $content = $this->attachmentRepository->read((string) $file['file']);
             if ($content === null || $content === '') {
                 continue;
             }
 
             $parts[] = new DataPart(
                 $content,
-                $file['name'],
-                $file['type'] !== '' ? $file['type'] : 'application/octet-stream',
+                $name,
+                !empty($file['mime_type']) ? (string) $file['mime_type'] : 'application/octet-stream',
                 'base64'
             );
-            $remaining -= $file['size'];
+            $remaining -= $size;
         }
 
         return $parts;
     }
 
     /**
-     * Attachments of every product in the order, de-duplicated.
+     * `upload`-type attachments of every product in the order, de-duplicated
+     * by product. `external` rows are never mailed — they point somewhere
+     * this module doesn't fetch from, and a broken/slow external host has no
+     * business delaying an order confirmation.
      *
-     * Keyed by path below the media directory, so ordering the same product
-     * twice — or two configurable children of one parent that share a folder —
-     * mails the file once.
-     *
-     * @return array<string, array{name: string, file: string, url: string, size: int, type: string}>
+     * @return array<int, array<string, mixed>>
      */
     private function collectFiles(OrderInterface $order): array
     {
@@ -133,7 +136,11 @@ class OrderAttachmentProvider
             }
             $seenProducts[$key] = true;
 
-            $files += $this->attachmentRepository->getProductFiles($sku, $productId);
+            foreach ($this->attachmentRepository->getProductAttachments($productId) as $attachmentId => $row) {
+                if (($row['type'] ?? null) === AttachmentType::UPLOAD && !empty($row['file'])) {
+                    $files[$attachmentId] = $row;
+                }
+            }
         }
 
         return $files;

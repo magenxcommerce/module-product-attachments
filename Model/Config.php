@@ -22,6 +22,7 @@ class Config
     public const XML_ENABLED = 'magenx_product_attachments/general/enabled';
     public const XML_MEDIA_DIRECTORY = 'magenx_product_attachments/general/media_directory';
     public const XML_ATTACH_TO = 'magenx_product_attachments/general/attach_to';
+    public const XML_SHOW_ON_STOREFRONT = 'magenx_product_attachments/general/show_on_storefront';
     public const XML_ALLOWED_EXTENSIONS = 'magenx_product_attachments/limits/allowed_extensions';
     public const XML_MAX_FILE_SIZE = 'magenx_product_attachments/limits/max_file_size';
     public const XML_MAX_TOTAL_SIZE = 'magenx_product_attachments/limits/max_total_size';
@@ -116,6 +117,16 @@ class Config
     public function isExtensionAllowed(string $extension): bool
     {
         return in_array(strtolower(ltrim($extension, '.')), $this->getAllowedExtensions(), true);
+    }
+
+    /**
+     * Independent of `enabled`: a merchant can keep mailing attachments
+     * without publishing them on the PDP, or the reverse. Gates both the
+     * `magenx_attachments` GraphQL field and the download resolver.
+     */
+    public function isShowOnStorefront(?int $storeId = null): bool
+    {
+        return $this->scopeConfig->isSetFlag(self::XML_SHOW_ON_STOREFRONT, ScopeInterface::SCOPE_STORE, $storeId);
     }
 
     /**

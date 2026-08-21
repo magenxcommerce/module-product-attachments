@@ -1,0 +1,41 @@
+<?xml version="1.0"?>
+<!--
+/**
+ * Copyright © MagenX. All rights reserved.
+ * SPDX-License-Identifier: MIT
+ *
+ * One row per attachment — upload or external link. This is new: attachments
+ * used to be nothing but a directory listing (see AttachmentRepository's old
+ * doc block, "the filesystem IS the data store"). Title, ordering and the
+ * upload/external distinction have nowhere to live in a directory entry, so
+ * this table is now the source of truth for LISTING an attachment; for an
+ * `upload` row the bytes still live on disk under pub/media, exactly as
+ * before — this table does not duplicate them, only describes them.
+ *
+ * One consequence: a file dropped into pub/media by hand (scp) no longer
+ * shows up on its own. A row has to exist. See README.
+ */
+-->
+<schema xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:framework:Setup/Declaration/Schema/etc/schema.xsd">
+    <table name="magenx_product_attachment" resource="default" engine="innodb" comment="Magenx Product Attachments">
+        <column xsi:type="int" name="attachment_id" padding="10" unsigned="true" nullable="false" identity="true" comment="Attachment ID"/>
+        <column xsi:type="int" name="product_id" padding="10" unsigned="true" nullable="false" identity="false" comment="Product ID (catalog_product_entity.entity_id)"/>
+        <column xsi:type="varchar" name="type" nullable="false" length="20" default="upload" comment="upload or external"/>
+        <column xsi:type="varchar" name="file" nullable="true" length="255" comment="Path below the media base — set for type=upload only"/>
+        <column xsi:type="varchar" name="external_url" nullable="true" length="1024" comment="Absolute http(s) URL — set for type=external only"/>
+        <column xsi:type="varchar" name="title" nullable="false" length="255" comment="Chip label shown to the customer"/>
+        <column xsi:type="varchar" name="mime_type" nullable="true" length="100" comment="MIME type — resolved from content for uploads, admin-entered or unknown for external"/>
+        <column xsi:type="int" name="size" padding="10" unsigned="true" nullable="true" comment="Size in bytes — known for uploads, unknown for external until first download"/>
+        <column xsi:type="smallint" name="sort_order" padding="5" unsigned="false" nullable="false" default="0" comment="Display order, ascending"/>
+        <column xsi:type="timestamp" name="created_at" on_update="false" nullable="false" default="CURRENT_TIMESTAMP" comment="Created At"/>
+        <constraint xsi:type="primary" referenceId="PRIMARY">
+            <column name="attachment_id"/>
+        </constraint>
+        <constraint xsi:type="foreign" referenceId="MAGENX_PRODUCT_ATTACHMENT_PRODUCT_ID_CATALOG_PRODUCT_ENTITY_ENTITY_ID"
+                    table="magenx_product_attachment" column="product_id"
+                    referenceTable="catalog_product_entity" referenceColumn="entity_id" onDelete="CASCADE"/>
+        <index referenceId="MAGENX_PRODUCT_ATTACHMENT_PRODUCT_ID" indexType="btree">
+            <column name="product_id"/>
+        </index>
+    </table>
+</schema>
