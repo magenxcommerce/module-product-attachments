@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.1.0](https://github.com/magenxcommerce/module-product-attachments/compare/v1.0.4...v1.1.0) (2026-08-22)
+
+
+### Features
+
+* switch product attachments grid to per-row uploads ([c4605e5](https://github.com/magenxcommerce/module-product-attachments/commit/c4605e58437b9e8a0a89b4377eef8d87ea521f32))
+
+
+### Bug Fixes
+
+* Switch product attachments grid to per-row uploads ([#13](https://github.com/magenxcommerce/module-product-attachments/issues/13)) ([c4605e5](https://github.com/magenxcommerce/module-product-attachments/commit/c4605e58437b9e8a0a89b4377eef8d87ea521f32))
+
 ## [1.0.4](https://github.com/magenxcommerce/module-product-attachments/compare/v1.0.3...v1.0.4) (2026-08-21)
 
 
