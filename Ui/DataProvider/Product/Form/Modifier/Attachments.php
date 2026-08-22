@@ -28,31 +28,18 @@ use Magento\Ui\Component\Form\Fieldset;
 /**
  * Adds the "Product Attachments" fieldset to the product edit form.
  *
- * Two pieces, deliberately kept separate rather than one field that does
- * both:
- *
- *  - a bulk file uploader (unchanged from before this module had a metadata
- *    table — still writes straight to pub/media/<sku>/, still returns
- *    {file, url, size, type}). It is a write-only buffer, not a display: it
- *    is always empty on page load, because uploaded files are shown below
- *    instead, once a save has turned them into rows.
- *  - a `dynamicRows` grid of the rows actually in `magenx_product_attachment`
- *    — title, type, sort order, and (read-only, informational) which file an
- *    `upload` row points at. This is what the admin edits; a NEW row is
- *    either a freshly saved upload (appears automatically, title defaulted
- *    to its filename) or an external link added here directly (Type =
- *    External Link, fill Title + External URL).
- *
- * The two-step "upload, save, then rename/reorder" flow (rather than editing
- * a title inline at upload time) is intentional: this module has no
- * JavaScript of its own, and inventing a live-bound file-picker cell was the
- * one place that risk outweighed the payoff.
+ * A single `dynamicRows` grid of the rows in `magenx_product_attachment` —
+ * title, type, sort order, and, driven by the row's own Type select via
+ * `switcherConfig`, either a live file uploader (Type = Uploaded File) or an
+ * External URL field (Type = External Link). Each row is self-contained:
+ * picking Upload shows a click-to-upload control that writes straight to
+ * pub/media/<sku>/ as soon as a file is chosen, no separate top-of-form
+ * uploader or second save step required.
  */
 class Attachments extends AbstractModifier
 {
     private const GROUP_NAME = 'magenx_product_attachments';
     private const FIELD_NAME = SyncProductAttachments::FORM_FIELD;
-    private const UPLOAD_FIELD_NAME = SyncProductAttachments::UPLOAD_FIELD;
     private const UPLOAD_URL = 'magenx_productattachments/attachment/upload';
 
     public function __construct(
@@ -78,18 +65,32 @@ class Attachments extends AbstractModifier
 
         $rows = [];
         foreach ($this->attachmentRepository->getProductAttachments($productId) as $attachmentId => $row) {
+            $type = (string) ($row['type'] ?? AttachmentType::UPLOAD);
+            $file = (string) ($row['file'] ?? '');
+
             $rows[] = [
                 'attachment_id' => $attachmentId,
-                'type' => (string) ($row['type'] ?? AttachmentType::UPLOAD),
+                'type' => $type,
                 'title' => (string) ($row['title'] ?? ''),
-                'file' => (string) ($row['file'] ?? ''),
+                // The fileUploader component expects its value as an array of
+                // file descriptors (what it also gets back from an upload),
+                // not a bare path — this is what makes an existing upload row
+                // render as already attached instead of empty.
+                'file' => $type === AttachmentType::UPLOAD && $file !== ''
+                    ? [[
+                        'file' => $file,
+                        'name' => $this->path->getFileName($file),
+                        'size' => (int) ($row['size'] ?? 0),
+                        'type' => (string) ($row['mime_type'] ?? ''),
+                        'url' => $this->attachmentRepository->getUrl($this->path->toMediaPath($file)),
+                    ]]
+                    : [],
                 'external_url' => (string) ($row['external_url'] ?? ''),
                 'sort_order' => (int) ($row['sort_order'] ?? 0),
             ];
         }
 
         $data[$productId][self::DATA_SOURCE_DEFAULT][self::FIELD_NAME] = $rows;
-        $data[$productId][self::DATA_SOURCE_DEFAULT][self::UPLOAD_FIELD_NAME] = [];
 
         return $data;
     }
@@ -138,58 +139,20 @@ class Attachments extends AbstractModifier
         return [
             'magenx_product_attachments_notice' => $this->getNotice(
                 __(
-                    'Upload here, then click Save — each file appears below as a row you can title and order. '
-                    . 'To add a link to a file hosted elsewhere, click "Add Attachment" below, set Type to '
-                    . '"External Link", and fill in Title and External URL. Files are written to '
+                    'Pick a Type for each row: "Uploaded File" shows a file field — click it to upload '
+                    . 'immediately; "External Link" shows a URL field instead. Files are written to '
                     . '<code>pub/media/%1/</code>.',
                     $this->path->getUploadDirectory($sku)
                 )
             ),
-            self::UPLOAD_FIELD_NAME => $this->getUploaderField($productId),
-            self::FIELD_NAME => $this->getAttachmentsGrid(),
+            self::FIELD_NAME => $this->getAttachmentsGrid($productId),
         ];
     }
 
     /**
      * @return array<string, array<string, mixed>>
      */
-    private function getUploaderField(int $productId): array
-    {
-        return [
-            'arguments' => [
-                'data' => [
-                    'config' => [
-                        'label' => __('Upload'),
-                        'componentType' => Field::NAME,
-                        'formElement' => 'fileUploader',
-                        'component' => 'Magento_Ui/js/form/element/file-uploader',
-                        'elementTmpl' => 'ui/form/element/uploader/uploader',
-                        'dataType' => Text::NAME,
-                        'dataScope' => self::UPLOAD_FIELD_NAME,
-                        'sortOrder' => 20,
-                        'isMultipleFiles' => true,
-                        'placeholderType' => 'document',
-                        'allowedExtensions' => implode(' ', $this->config->getAllowedExtensions()),
-                        'maxFileSize' => $this->config->getMaxFileSize(),
-                        'uploaderConfig' => [
-                            'url' => $this->urlBuilder->getUrl(
-                                self::UPLOAD_URL,
-                                ['product_id' => $productId, 'store' => $this->getStoreId()]
-                            ),
-                        ],
-                        'notice' => __(
-                            'An upload is stored immediately. Save the product to turn it into a row below.'
-                        ),
-                    ],
-                ],
-            ],
-        ];
-    }
-
-    /**
-     * @return array<string, array<string, mixed>>
-     */
-    private function getAttachmentsGrid(): array
+    private function getAttachmentsGrid(int $productId): array
     {
         return [
             'arguments' => [
@@ -222,7 +185,7 @@ class Attachments extends AbstractModifier
                             ],
                         ],
                     ],
-                    'children' => $this->getAttachmentsGridColumns(),
+                    'children' => $this->getAttachmentsGridColumns($productId),
                 ],
             ],
         ];
@@ -231,7 +194,7 @@ class Attachments extends AbstractModifier
     /**
      * @return array<string, array<string, mixed>>
      */
-    private function getAttachmentsGridColumns(): array
+    private function getAttachmentsGridColumns(int $productId): array
     {
         return [
             'attachment_id' => [
@@ -260,6 +223,56 @@ class Attachments extends AbstractModifier
                             'options' => $this->attachmentTypeSource->toOptionArray(),
                             'value' => AttachmentType::UPLOAD,
                             'sortOrder' => 10,
+                            // Drives which of `file` / `external_url` is shown
+                            // in this row, and clears the one being hidden so
+                            // switching back later doesn't resurrect a stale
+                            // value that no longer matches what's saved.
+                            'switcherConfig' => [
+                                'component' => 'Magento_Ui/js/form/switcher',
+                                'enabled' => true,
+                                'rules' => [
+                                    [
+                                        'value' => AttachmentType::UPLOAD,
+                                        'actions' => [
+                                            [
+                                                'target' => '${ $.parentName }.file',
+                                                'callback' => 'visible',
+                                                'params' => [true],
+                                            ],
+                                            [
+                                                'target' => '${ $.parentName }.external_url',
+                                                'callback' => 'visible',
+                                                'params' => [false],
+                                            ],
+                                            [
+                                                'target' => '${ $.parentName }.external_url',
+                                                'callback' => 'value',
+                                                'params' => [''],
+                                            ],
+                                        ],
+                                    ],
+                                    [
+                                        'value' => AttachmentType::EXTERNAL,
+                                        'actions' => [
+                                            [
+                                                'target' => '${ $.parentName }.file',
+                                                'callback' => 'visible',
+                                                'params' => [false],
+                                            ],
+                                            [
+                                                'target' => '${ $.parentName }.external_url',
+                                                'callback' => 'visible',
+                                                'params' => [true],
+                                            ],
+                                            [
+                                                'target' => '${ $.parentName }.file',
+                                                'callback' => 'value',
+                                                'params' => [[]],
+                                            ],
+                                        ],
+                                    ],
+                                ],
+                            ],
                         ],
                     ],
                 ],
@@ -284,11 +297,21 @@ class Attachments extends AbstractModifier
                         'config' => [
                             'label' => __('Uploaded File'),
                             'componentType' => Field::NAME,
-                            'formElement' => Input::NAME,
+                            'formElement' => 'fileUploader',
+                            'component' => 'Magento_Ui/js/form/element/file-uploader',
+                            'elementTmpl' => 'ui/form/element/uploader/uploader',
                             'dataType' => Text::NAME,
                             'dataScope' => 'file',
-                            'disabled' => true,
-                            'notice' => __('Set by uploading above — not editable here.'),
+                            'isMultipleFiles' => false,
+                            'placeholderType' => 'document',
+                            'allowedExtensions' => implode(' ', $this->config->getAllowedExtensions()),
+                            'maxFileSize' => $this->config->getMaxFileSize(),
+                            'uploaderConfig' => [
+                                'url' => $this->urlBuilder->getUrl(
+                                    self::UPLOAD_URL,
+                                    ['product_id' => $productId, 'store' => $this->getStoreId()]
+                                ),
+                            ],
                             'sortOrder' => 30,
                         ],
                     ],
@@ -304,6 +327,7 @@ class Attachments extends AbstractModifier
                             'dataType' => Text::NAME,
                             'dataScope' => 'external_url',
                             'placeholder' => 'https://example.com/file.pdf',
+                            'visible' => false,
                             'sortOrder' => 40,
                         ],
                     ],

@@ -19,23 +19,19 @@ use Psr\Log\LoggerInterface;
 /**
  * Makes the "Product Attachments" fieldset authoritative on save.
  *
- * Three things happen, in this order:
+ * Two things happen, in this order:
  *
- *  1. Files sitting in the bulk upload buffer (posted separately from the
- *     metadata grid — see the Ui modifier's doc block for why the two are
- *     split) that don't already have a row become new `upload` rows, titled
- *     after their filename.
- *  2. The metadata grid is diffed against the DB: rows the admin removed are
+ *  1. The metadata grid is diffed against the DB: rows the admin removed are
  *     deleted (and, for `upload` rows, their file goes with them); rows still
  *     present are inserted or updated.
- *  3. A SKU rename moves `upload` rows' folder on disk and repoints their
- *     `file` column — done LAST, so steps 1-2 (which read/write file paths
+ *  2. A SKU rename moves `upload` rows' folder on disk and repoints their
+ *     `file` column — done LAST, so step 1 (which reads/writes file paths
  *     relative to the OLD SKU, because that's still the folder actually on
- *     disk at that point) see a consistent state.
+ *     disk at that point) sees a consistent state.
  *
- * All three are gated on the metadata field being PRESENT in the product's
- * data — an import, a REST call or a mass attribute update never carries it,
- * and must not be read as "no attachments": that would empty the catalogue's
+ * Both are gated on the metadata field being PRESENT in the product's data —
+ * an import, a REST call or a mass attribute update never carries it, and
+ * must not be read as "no attachments": that would empty the catalogue's
  * attachments on the first mass action.
  */
 class SyncProductAttachments implements ObserverInterface
@@ -46,13 +42,6 @@ class SyncProductAttachments implements ObserverInterface
      * under.
      */
     public const FORM_FIELD = 'magenx_product_attachments';
-
-    /**
-     * Field name of the bulk upload buffer (plain multi-file uploader:
-     * {file, name, url, size, type} per entry). Always empty on page load —
-     * see the Ui modifier — so whatever is here on save is freshly uploaded.
-     */
-    public const UPLOAD_FIELD = 'magenx_product_attachments_upload';
 
     private const MAX_EXTERNAL_URL_LENGTH = 1024;
 
@@ -85,7 +74,7 @@ class SyncProductAttachments implements ObserverInterface
         try {
             $existing = $this->attachmentRepository->getProductAttachments($productId);
 
-            $rows = $this->withUploadedFilesAsRows($product, $existing);
+            $rows = $this->getPostedRows($product);
             $this->syncRows($productId, $existing, $rows);
 
             if ($originalSku !== $sku) {
@@ -104,53 +93,6 @@ class SyncProductAttachments implements ObserverInterface
     }
 
     /**
-     * The posted metadata rows, plus one synthetic row per freshly uploaded
-     * file that isn't already described by an existing row or another posted
-     * row — this is what turns "uploaded, then saved" into a row appearing.
-     *
-     * @param array<int, array<string, mixed>> $existing keyed by attachment_id
-     * @return array<int, array<string, mixed>>
-     */
-    private function withUploadedFilesAsRows(Product $product, array $existing): array
-    {
-        $rows = $this->getPostedRows($product);
-
-        $known = [];
-        foreach ($existing as $row) {
-            if (($row['type'] ?? null) === AttachmentType::UPLOAD && !empty($row['file'])) {
-                $known[(string) $row['file']] = true;
-            }
-        }
-        foreach ($rows as $row) {
-            $file = $this->path->normalizeFile((string) ($row['file'] ?? ''));
-            if ($file !== '') {
-                $known[$file] = true;
-            }
-        }
-
-        $nextSortOrder = $this->nextSortOrder($existing, $rows);
-
-        foreach ($this->getPostedUploads($product) as $upload) {
-            $file = $this->path->normalizeFile((string) ($upload['file'] ?? ''));
-            if ($file === '' || isset($known[$file])) {
-                continue;
-            }
-
-            $known[$file] = true;
-            $rows[] = [
-                'attachment_id' => 0,
-                'type' => AttachmentType::UPLOAD,
-                'title' => $this->path->getFileName($file),
-                'file' => $file,
-                'external_url' => '',
-                'sort_order' => $nextSortOrder++,
-            ];
-        }
-
-        return $rows;
-    }
-
-    /**
      * @return array<int, array<string, mixed>>
      */
     private function getPostedRows(Product $product): array
@@ -165,37 +107,6 @@ class SyncProductAttachments implements ObserverInterface
         }
 
         return $rows;
-    }
-
-    /**
-     * @return array<int, array<string, mixed>>
-     */
-    private function getPostedUploads(Product $product): array
-    {
-        $posted = $product->getData(self::UPLOAD_FIELD);
-        $uploads = [];
-
-        foreach (is_array($posted) ? $posted : [] as $upload) {
-            if (is_array($upload)) {
-                $uploads[] = $upload;
-            }
-        }
-
-        return $uploads;
-    }
-
-    /**
-     * @param array<int, array<string, mixed>> $existing
-     * @param array<int, array<string, mixed>> $rows
-     */
-    private function nextSortOrder(array $existing, array $rows): int
-    {
-        $max = -1;
-        foreach ([...$existing, ...$rows] as $row) {
-            $max = max($max, (int) ($row['sort_order'] ?? 0));
-        }
-
-        return $max + 1;
     }
 
     /**
@@ -248,7 +159,13 @@ class SyncProductAttachments implements ObserverInterface
         $sortOrder = (int) ($row['sort_order'] ?? 0);
 
         if ($type === AttachmentType::UPLOAD) {
-            $file = $this->path->normalizeFile((string) ($row['file'] ?? ''));
+            // The fileUploader component posts its value as an array of file
+            // descriptors (one, since isMultipleFiles is false here), not a
+            // bare path — see the Ui modifier's modifyData() for the mirror
+            // of this shape on the way back out.
+            $fileRow = $row['file'] ?? [];
+            $fileRow = is_array($fileRow) ? ($fileRow[0] ?? []) : [];
+            $file = $this->path->normalizeFile((string) (is_array($fileRow) ? ($fileRow['file'] ?? '') : ''));
             if ($file === '') {
                 return null;
             }
