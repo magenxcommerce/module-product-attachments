@@ -29,9 +29,9 @@ use Magento\Ui\Component\Form\Fieldset;
  * Adds the "Product Attachments" fieldset to the product edit form.
  *
  * A single `dynamicRows` grid of the rows in `magenx_product_attachment` —
- * title, type, sort order, and, driven by the row's own Type select via
- * `switcherConfig`, either a live file uploader (Type = Uploaded File) or an
- * External URL field (Type = External Link). Each row is self-contained:
+ * title, type, sort order, and, driven by the row's own Type select, either a
+ * live file uploader (Type = Uploaded File) or an External URL field (Type =
+ * External Link). Each row is self-contained:
  * picking Upload shows a click-to-upload control that writes straight to
  * pub/media/<sku>/ as soon as a file is chosen, no separate top-of-form
  * uploader or second save step required.
@@ -223,54 +223,20 @@ class Attachments extends AbstractModifier
                             'options' => $this->attachmentTypeSource->toOptionArray(),
                             'value' => AttachmentType::UPLOAD,
                             'sortOrder' => 10,
-                            // Drives which of `file` / `external_url` is shown
-                            // in this row, and clears the one being hidden so
-                            // switching back later doesn't resurrect a stale
-                            // value that no longer matches what's saved.
-                            'switcherConfig' => [
-                                'component' => 'Magento_Ui/js/form/switcher',
-                                'enabled' => true,
-                                'rules' => [
-                                    [
-                                        'value' => AttachmentType::UPLOAD,
-                                        'actions' => [
-                                            [
-                                                'target' => '${ $.parentName }.file',
-                                                'callback' => 'visible',
-                                                'params' => [true],
-                                            ],
-                                            [
-                                                'target' => '${ $.parentName }.external_url',
-                                                'callback' => 'visible',
-                                                'params' => [false],
-                                            ],
-                                            [
-                                                'target' => '${ $.parentName }.external_url',
-                                                'callback' => 'value',
-                                                'params' => [''],
-                                            ],
-                                        ],
-                                    ],
-                                    [
-                                        'value' => AttachmentType::EXTERNAL,
-                                        'actions' => [
-                                            [
-                                                'target' => '${ $.parentName }.file',
-                                                'callback' => 'visible',
-                                                'params' => [false],
-                                            ],
-                                            [
-                                                'target' => '${ $.parentName }.external_url',
-                                                'callback' => 'visible',
-                                                'params' => [true],
-                                            ],
-                                            [
-                                                'target' => '${ $.parentName }.file',
-                                                'callback' => 'value',
-                                                'params' => [[]],
-                                            ],
-                                        ],
-                                    ],
+                            // Shows this row's `file` or `external_url` and
+                            // hides (and clears) the other. A component rather
+                            // than a `switcherConfig`: the stock switcher has
+                            // no tie to the record that owns it and fails
+                            // silently inside dynamicRows — see the component.
+                            'component' => 'Magenx_ProductAttachments/js/attachment-type',
+                            'typeMap' => [
+                                AttachmentType::UPLOAD => [
+                                    'show' => ['file'],
+                                    'hide' => ['external_url'],
+                                ],
+                                AttachmentType::EXTERNAL => [
+                                    'show' => ['external_url'],
+                                    'hide' => ['file'],
                                 ],
                             ],
                         ],
@@ -299,10 +265,13 @@ class Attachments extends AbstractModifier
                             'componentType' => Field::NAME,
                             'formElement' => 'fileUploader',
                             'component' => 'Magento_Ui/js/form/element/file-uploader',
-                            'elementTmpl' => 'ui/form/element/uploader/uploader',
                             'dataType' => Text::NAME,
                             'dataScope' => 'file',
                             'isMultipleFiles' => false,
+                            // Both this and `external_url` start hidden; the
+                            // Type select reveals whichever the row uses, so a
+                            // link row never flashes an uploader.
+                            'visible' => false,
                             'placeholderType' => 'document',
                             'allowedExtensions' => implode(' ', $this->config->getAllowedExtensions()),
                             'maxFileSize' => $this->config->getMaxFileSize(),

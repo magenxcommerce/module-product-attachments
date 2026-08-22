@@ -121,6 +121,14 @@ class SyncProductAttachments implements ObserverInterface
         $kept = [];
 
         foreach ($rows as $row) {
+            // `dynamicRows` does not drop a removed record from the posted
+            // data: it keeps it and flags it (deleteProperty/deleteValue).
+            // Skipping it here leaves it out of $kept, so the pass below is
+            // what actually deletes it — row and, for an upload, its file.
+            if (filter_var($row['delete'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
+                continue;
+            }
+
             $attachmentId = (int) ($row['attachment_id'] ?? 0);
             $isExisting = $attachmentId > 0 && isset($existing[$attachmentId]);
 
