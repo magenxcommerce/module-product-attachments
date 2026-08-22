@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.1](https://github.com/magenxcommerce/module-product-attachments/compare/v1.1.0...v1.1.1) (2026-08-22)
+
+
+### Bug Fixes
+
+* make the attachment row Type select actually drive its fields ([#15](https://github.com/magenxcommerce/module-product-attachments/issues/15)) ([b277359](https://github.com/magenxcommerce/module-product-attachments/commit/b277359a733028ff8b6fb609013061a53dd79b2f))
+
 ## [1.1.0](https://github.com/magenxcommerce/module-product-attachments/compare/v1.0.4...v1.1.0) (2026-08-22)
 
 
