@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.2](https://github.com/magenxcommerce/module-product-attachments/compare/v1.1.1...v1.1.2) (2026-10-01)
+
+
+### Bug Fixes
+
+* resolve attachment downloads only for publicly visible products ([6568c0f](https://github.com/magenxcommerce/module-product-attachments/commit/6568c0f97dd2692c9b8c3205208b2563cca5454d))
+* Validate product visibility before resolving attachment downloads ([#17](https://github.com/magenxcommerce/module-product-attachments/issues/17)) ([6568c0f](https://github.com/magenxcommerce/module-product-attachments/commit/6568c0f97dd2692c9b8c3205208b2563cca5454d))
+
 ## [1.1.1](https://github.com/magenxcommerce/module-product-attachments/compare/v1.1.0...v1.1.1) (2026-08-22)
 
 
