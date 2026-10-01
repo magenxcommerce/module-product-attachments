@@ -84,6 +84,12 @@ caller: it resolves the id via that query, then fetches and streams the
 bytes itself, so the browser's network tab shows only `/api/download/<id>`,
 never a `pub/media` path or an external host.
 
+Attachment ids are sequential and therefore guessable, so the download query
+resolves an id only when its product's page is itself public on the request's
+store: the product is enabled, visible in catalog or search, and assigned to
+that website. Walking the ids yields nothing a crawler of the product pages
+wouldn't already find.
+
 ### Email
 
 Unchanged from earlier versions, and `external`-type rows are never mailed —
@@ -190,3 +196,6 @@ is valid, and the Magento symbols used were read from a 2.4.8 checkout of
   comes back.
 - Turn **Show On Product Page** back off → `magenx_attachments` returns null
   and `magenxProductAttachmentDownload` returns null for that product's ids.
+- With the toggle on, disable the product (or set it to **Not Visible
+  Individually**, or unassign it from the website) →
+  `magenxProductAttachmentDownload` returns null for its ids.
